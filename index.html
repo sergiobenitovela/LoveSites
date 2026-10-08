@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#fff7f2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Nuestros sitios</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#fff7f2;--ink:#3a2b2b;--mute:#a08c87;--or:#f2994a;--pk:#e8728f;--grad:linear-gradient(135deg,var(--or),var(--pk));--line:#f1e2dc}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font:16px/1.45 system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--bg)}
+.hide{display:none!important}
+h1,h2{margin:0 0 6px;font-weight:600}
+h1{font-size:28px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+input,textarea,button{font:inherit;color:inherit}
+input[type=text],input[type=email],input[type=password],input[type=date],textarea{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:6px 0}
+input[type=range]{width:100%;accent-color:var(--pk)}
+.btn{border:0;border-radius:12px;padding:12px 18px;background:var(--grad);color:#fff;font-weight:600;flex:1}
+.ghost{background:none;color:var(--mute);border:1px solid var(--line)}
+.row{display:flex;gap:10px;margin-top:12px}
+.mute{color:var(--mute);margin:0 0 6px}
+#loginForm{height:100%;max-width:340px;margin:auto;display:flex;flex-direction:column;justify-content:center;padding:24px}
+#err{color:var(--pk);min-height:1.4em;margin:4px 0}
+#map{position:fixed;inset:0}
+header{position:fixed;top:0;left:0;right:0;z-index:900;display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:#fff7f2cc;backdrop-filter:blur(8px)}
+header button{padding:6px 12px;border-radius:10px}
+.fab{position:fixed;right:16px;z-index:900;width:56px;height:56px;border:0;border-radius:50%;background:var(--grad);color:#fff;font-size:28px;box-shadow:0 6px 18px #e8728f55}
+#fab{bottom:calc(20px + env(safe-area-inset-bottom))}
+#loc{bottom:calc(88px + env(safe-area-inset-bottom));width:44px;height:44px;font-size:20px;background:#fff;color:var(--pk);margin-right:6px}
+#pinc{position:fixed;left:50%;top:50%;z-index:900;width:34px;height:34px;margin:-34px 0 0 -17px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--grad);border:3px solid #fff;box-shadow:0 3px 10px #0003;pointer-events:none}
+#pickbar{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:1100;background:var(--bg);padding:14px;border-radius:18px;box-shadow:0 6px 24px #0002}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:1100;max-height:88vh;overflow:auto;background:var(--bg);border-radius:22px 22px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px #0002}
+.sheet img{width:100%;max-height:45vh;object-fit:cover;border-radius:14px;margin-bottom:10px}
+.r{float:right;color:var(--pk)}
+.photo{display:block;padding:12px;border:1px dashed var(--or);border-radius:12px;text-align:center;color:var(--or);margin:6px 0}
+.pin{width:34px;height:34px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:600;font-size:14px;border:2px solid #fff;box-shadow:0 2px 8px #e8728f66}
+</style>
+</head>
+<body>
+<form id="loginForm" class="hide">
+  <h1>Nuestros sitios</h1>
+  <p class="mute">Solo para nosotros dos</p>
+  <input id="em" type="email" placeholder="Email" autocomplete="username" required>
+  <input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+  <div id="err"></div>
+  <button class="btn" style="flex:none">Entrar</button>
+</form>
+
+<div id="app" class="hide">
+  <div id="map"></div>
+  <header><b>Nuestros sitios</b><button id="out" class="ghost">Salir</button></header>
+  <div id="pinc" class="hide"></div>
+  <div id="pickbar" class="hide">
+    <b>Mueve el mapa hasta el sitio</b>
+    <div class="row"><button class="btn ghost" id="pc">Cancelar</button><button class="btn" id="pok">Confirmar</button></div>
+  </div>
+  <button id="loc" class="fab" title="Mi ubicación">⌖</button>
+  <button id="fab" class="fab" title="Añadir sitio">+</button>
+  <div id="sheet" class="sheet hide"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL='https://kgjnczjnydlzzzpbdbkh.supabase.co', SUPABASE_KEY='sb_publishable_4zc0YOh5zhE_GiJpijL9jw_2UdKzSuM';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let map,places=[];const markers=L.layerGroup();
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+sb.auth.getSession().then(({data})=>data.session?start():$('#loginForm').classList.remove('hide'));
+
+$('#loginForm').onsubmit=async e=>{
+  e.preventDefault();
+  const {error}=await sb.auth.signInWithPassword({email:$('#em').value.trim(),password:$('#pw').value});
+  error?$('#err').textContent='Email o contraseña incorrectos':start();
+};
+$('#out').onclick=async()=>{await sb.auth.signOut();location.reload();};
+
+async function start(){
+  $('#loginForm').classList.add('hide');$('#app').classList.remove('hide');
+  if(!map){
+    map=L.map('map',{zoomControl:false}).setView([40.4,-3.7],6);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap &copy; CARTO'}).addTo(map);
+    markers.addTo(map);
+  }
+  await load();
+  if(places.length)map.fitBounds(markers.getBounds().pad(.3),{maxZoom:15});
+}
+
+async function load(){
+  const {data,error}=await sb.from('places').select('*').order('created_at',{ascending:false});
+  if(error)return alert(error.message);
+  places=data;markers.clearLayers();
+  places.forEach(p=>L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:`<div class="pin">${p.rating}</div>`,iconSize:[34,34],iconAnchor:[17,17]})}).on('click',()=>view(p)).addTo(markers));
+}
+
+function sheet(html){
+  const s=$('#sheet');s.innerHTML=html;s.classList.remove('hide');
+  const x=$('#x');if(x)x.onclick=closeSheet;
+}
+const closeSheet=()=>$('#sheet').classList.add('hide');
+
+$('#loc').onclick=()=>navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],16));
+const picking=on=>['#pinc','#pickbar'].forEach(s=>$(s).classList.toggle('hide',!on));
+$('#fab').onclick=()=>{closeSheet();picking(true);};
+$('#pc').onclick=()=>picking(false);
+$('#pok').onclick=()=>{picking(false);form(map.getCenter());};
+
+async function shrink(file,max=1400){
+  const b=await createImageBitmap(file,{imageOrientation:'from-image'});
+  const k=Math.min(1,max/Math.max(b.width,b.height));
+  const c=document.createElement('canvas');c.width=b.width*k;c.height=b.height*k;
+  c.getContext('2d').drawImage(b,0,0,c.width,c.height);
+  return new Promise(r=>c.toBlob(r,'image/jpeg',.82)); // re-encoding también borra el EXIF (GPS incluido)
+}
+
+function form(c){
+  sheet(`<h2>Nuevo sitio</h2>
+  <input id="fn" type="text" placeholder="Nombre del sitio">
+  <label class="photo"><input id="ff" type="file" accept="image/*" hidden><span id="fl">+ Añadir foto</span></label>
+  <div>Nota: <b id="rv">7</b>/10</div><input id="fr" type="range" min="1" max="10" value="7">
+  <textarea id="fc" rows="3" placeholder="Nota o recuerdo (opcional)"></textarea>
+  <input id="fd" type="date" value="${new Date().toISOString().slice(0,10)}">
+  <div class="row"><button class="btn ghost" id="x">Cancelar</button><button class="btn" id="ok">Guardar</button></div>`);
+  $('#ff').onchange=e=>$('#fl').textContent=e.target.files[0]?.name||'+ Añadir foto';
+  $('#fr').oninput=e=>$('#rv').textContent=e.target.value;
+  $('#ok').onclick=async()=>{
+    const name=$('#fn').value.trim();if(!name)return $('#fn').focus();
+    const ok=$('#ok');ok.disabled=true;ok.textContent='Guardando…';
+    try{
+      let path=null;const f=$('#ff').files[0];
+      if(f){
+        const {data:{user}}=await sb.auth.getUser();
+        path=`${user.id}/${crypto.randomUUID()}.jpg`;
+        const {error}=await sb.storage.from('fotos').upload(path,await shrink(f),{contentType:'image/jpeg'});
+        if(error)throw error;
+      }
+      const {error}=await sb.from('places').insert({name,lat:c.lat,lng:c.lng,rating:+$('#fr').value,note:$('#fc').value.trim()||null,visited_on:$('#fd').value||null,photo_path:path});
+      if(error)throw error;
+      closeSheet();load();
+    }catch(e){alert('Error: '+e.message);ok.disabled=false;ok.textContent='Guardar';}
+  };
+}
+
+async function view(p){
+  let img='';
+  if(p.photo_path){
+    const {data}=await sb.storage.from('fotos').createSignedUrl(p.photo_path,3600);
+    if(data)img=`<img src="${data.signedUrl}" alt="">`;
+  }
+  sheet(`${img}<h2>${esc(p.name)} <span class="r">${p.rating}/10</span></h2>
+  <p class="mute">${esc(p.visited_on||'')}</p><p>${esc(p.note||'')}</p>
+  <div class="row"><button class="btn ghost" id="del">Borrar</button><button class="btn" id="x">Cerrar</button></div>`);
+  $('#del').onclick=async()=>{
+    if(!confirm('¿Borrar este sitio?'))return;
+    if(p.photo_path)await sb.storage.from('fotos').remove([p.photo_path]);
+    await sb.from('places').delete().eq('id',p.id);
+    closeSheet();load();
+  };
+}
+</script>
+</body>
+</html>
