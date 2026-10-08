@@ -39,6 +39,7 @@ header button{padding:6px 12px;border-radius:10px}
 .r{float:right;color:var(--pk)}
 .photo{display:block;padding:12px;border:1px dashed var(--or);border-radius:12px;text-align:center;color:var(--or);margin:6px 0}
 .pin{width:34px;height:34px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:600;font-size:14px;border:2px solid #fff;box-shadow:0 2px 8px #e8728f66}
+.leaflet-tile-pane{filter:saturate(.6) sepia(.15)}
 </style>
 </head>
 <body>
@@ -87,7 +88,7 @@ async function start(){
   $('#loginForm').classList.add('hide');$('#app').classList.remove('hide');
   if(!map){
     map=L.map('map',{zoomControl:false}).setView([40.4,-3.7],6);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap &copy; CARTO'}).addTo(map);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
     markers.addTo(map);
   }
   await load();
