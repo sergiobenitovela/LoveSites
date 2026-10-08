@@ -1,29 +1,284 @@
-:root{--bg:#fff7f2;--ink:#3a2b2b;--mute:#a08c87;--or:#f2994a;--pk:#e8728f;--grad:linear-gradient(135deg,var(--or),var(--pk));--line:#f1e2dc}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;font:16px/1.45 system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--bg)}
-.hide{display:none!important}
-h1,h2{margin:0 0 6px;font-weight:600}
-h1{font-size:28px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-input,textarea,button{font:inherit;color:inherit}
-input[type=text],input[type=email],input[type=password],input[type=date],textarea{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:6px 0}
-input[type=range]{width:100%;accent-color:var(--pk)}
-.btn{border:0;border-radius:12px;padding:12px 18px;background:var(--grad);color:#fff;font-weight:600;flex:1}
-.ghost{background:none;color:var(--mute);border:1px solid var(--line)}
-.row{display:flex;gap:10px;margin-top:12px}
-.mute{color:var(--mute);margin:0 0 6px}
-#loginForm{height:100%;max-width:340px;margin:auto;display:flex;flex-direction:column;justify-content:center;padding:24px}
-#err{color:var(--pk);min-height:1.4em;margin:4px 0}
-#map{position:fixed;inset:0}
-header{position:fixed;top:0;left:0;right:0;z-index:900;display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:#fff7f2cc;backdrop-filter:blur(8px)}
-header button{padding:6px 12px;border-radius:10px}
-.fab{position:fixed;right:16px;z-index:900;width:56px;height:56px;border:0;border-radius:50%;background:var(--grad);color:#fff;font-size:28px;box-shadow:0 6px 18px #e8728f55}
-#fab{bottom:calc(20px + env(safe-area-inset-bottom))}
-#loc{bottom:calc(88px + env(safe-area-inset-bottom));width:44px;height:44px;font-size:20px;background:#fff;color:var(--pk);margin-right:6px}
-#pinc{position:fixed;left:50%;top:50%;z-index:900;width:34px;height:34px;margin:-34px 0 0 -17px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--grad);border:3px solid #fff;box-shadow:0 3px 10px #0003;pointer-events:none}
-#pickbar{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:1100;background:var(--bg);padding:14px;border-radius:18px;box-shadow:0 6px 24px #0002}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:1100;max-height:88vh;overflow:auto;background:var(--bg);border-radius:22px 22px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px #0002}
-.sheet img{width:100%;max-height:45vh;object-fit:cover;border-radius:14px;margin-bottom:10px}
-.r{float:right;color:var(--pk)}
-.photo{display:block;padding:12px;border:1px dashed var(--or);border-radius:12px;text-align:center;color:var(--or);margin:6px 0}
-.pin{width:34px;height:34px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:600;font-size:14px;border:2px solid #fff;box-shadow:0 2px 8px #e8728f66}
-.leaflet-tile-pane{filter:saturate(.6) sepia(.15)}
+/* ==========================================================================
+   LoveSites · estilos
+   Índice:
+   1. Variables (paleta y capas)
+   2. Base
+   3. Componentes reutilizables (formularios, botones, utilidades)
+   4. Pantalla de login
+   5. App: mapa, cabecera, botones flotantes, modo "elegir sitio"
+   6. Panel inferior (formulario y detalle)
+   7. Marcadores y ajustes del mapa
+   ========================================================================== */
+
+
+/* 1. Variables ------------------------------------------------------------ */
+:root {
+  /* Colores */
+  --bg:   #fff7f2;   /* fondo crema */
+  --ink:  #3a2b2b;   /* texto */
+  --mute: #a08c87;   /* texto secundario */
+  --line: #f1e2dc;   /* bordes suaves */
+  --or:   #f2994a;   /* naranja */
+  --pk:   #e8728f;   /* rosa */
+  --grad: linear-gradient(135deg, var(--or), var(--pk));
+
+  /* Capas (de menor a mayor) */
+  --z-ui:    900;    /* cabecera, botones flotantes, pin central */
+  --z-panel: 1100;   /* panel inferior y barra de confirmación */
+
+  /* Forma */
+  --radius: 12px;
+}
+
+
+/* 2. Base ----------------------------------------------------------------- */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font: 16px/1.45 system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+h1,
+h2 {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+h1 {
+  font-size: 28px;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+input,
+textarea,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+
+/* 3. Componentes reutilizables --------------------------------------------- */
+
+/* Campos de formulario */
+input[type=text],
+input[type=email],
+input[type=password],
+input[type=date],
+textarea {
+  width: 100%;
+  margin: 6px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+input[type=range] {
+  width: 100%;
+  accent-color: var(--pk);
+}
+
+/* Botones */
+.btn {
+  flex: 1;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--grad);
+  color: #fff;
+  font-weight: 600;
+}
+
+.ghost {                      /* variante discreta; va después de .btn a propósito */
+  background: none;
+  color: var(--mute);
+  border: 1px solid var(--line);
+}
+
+/* Utilidades */
+.hide {
+  display: none !important;
+}
+
+.row {                        /* fila de botones */
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.mute {
+  margin: 0 0 6px;
+  color: var(--mute);
+}
+
+
+/* 4. Pantalla de login ------------------------------------------------------ */
+#loginForm {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  max-width: 340px;
+  margin: auto;
+  padding: 24px;
+}
+
+#err {                        /* mensaje de error del login */
+  min-height: 1.4em;
+  margin: 4px 0;
+  color: var(--pk);
+}
+
+
+/* 5. App: mapa y controles -------------------------------------------------- */
+#map {
+  position: fixed;
+  inset: 0;
+}
+
+/* Cabecera translúcida (respeta el notch del iPhone) */
+header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-ui);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: #fff7f2cc;      /* --bg con transparencia */
+  backdrop-filter: blur(8px);
+}
+
+header button {
+  padding: 6px 12px;
+  border-radius: 10px;
+}
+
+/* Botones flotantes */
+.fab {
+  position: fixed;
+  right: 16px;
+  z-index: var(--z-ui);
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--grad);
+  color: #fff;
+  font-size: 28px;
+  box-shadow: 0 6px 18px #e8728f55;
+}
+
+#fab {                        /* añadir sitio */
+  bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+#loc {                        /* mi ubicación */
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  width: 44px;
+  height: 44px;
+  margin-right: 6px;
+  background: #fff;
+  color: var(--pk);
+  font-size: 20px;
+}
+
+/* Modo "elegir sitio": pin fijo en el centro del mapa + barra de confirmación */
+#pinc {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: var(--z-ui);
+  width: 34px;
+  height: 34px;
+  margin: -34px 0 0 -17px;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  background: var(--grad);
+  box-shadow: 0 3px 10px #0003;
+  transform: rotate(-45deg);
+  pointer-events: none;       /* deja pasar los gestos al mapa */
+}
+
+#pickbar {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: var(--z-panel);
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--bg);
+  box-shadow: 0 6px 24px #0002;
+}
+
+
+/* 6. Panel inferior (formulario y detalle) ---------------------------------- */
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-panel);
+  max-height: 88vh;
+  overflow: auto;
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+  border-radius: 22px 22px 0 0;
+  background: var(--bg);
+  box-shadow: 0 -8px 30px #0002;
+}
+
+.sheet img {                  /* foto del sitio */
+  width: 100%;
+  max-height: 45vh;
+  margin-bottom: 10px;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+.r {                          /* nota "8/10" junto al título */
+  float: right;
+  color: var(--pk);
+}
+
+.photo {                      /* botones "Hacer foto" / "Galería" */
+  display: block;
+  margin: 6px 0;
+  padding: 12px;
+  border: 1px dashed var(--or);
+  border-radius: var(--radius);
+  color: var(--or);
+  text-align: center;
+}
+
+
+/* 7. Marcadores y ajustes del mapa ------------------------------------------ */
+.pin {                        /* círculo con la nota */
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--grad);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px #e8728f66;
+}
+
+.leaflet-tile-pane {          /* suaviza los colores del mapa para que combinen */
+  filter: saturate(.6) sepia(.15);
+}
