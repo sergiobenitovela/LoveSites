@@ -1,1 +1,11 @@
-{"name":"Nuestros sitios","short_name":"Sitios","start_url":".","display":"standalone","background_color":"#fff7f2","theme_color":"#fff7f2","icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png"}]}
+{
+    "name":"Nuestros sitios",
+    "short_name":"Sitios",
+    "start_url":".",
+    "display":"standalone",
+    "background_color":"#fff7f2",
+    "theme_color":"#fff7f2",
+    "icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},
+            {"src":"icon-512.png","sizes":"512x512","type":"image/png"}
+    ]
+}
