@@ -1,6 +1,6 @@
 {
-    "name":"Nuestros sitios",
-    "short_name":"Sitios",
+    "name":"LoveSites",
+    "short_name":"LoveSites",
     "start_url":".",
     "display":"standalone",
     "background_color":"#fff7f2",
