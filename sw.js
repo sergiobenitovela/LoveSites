@@ -1,4 +1,4 @@
-const C='v2',A=['./','./index.html','./style.css','./app.js','./config.js','./manifest.webmanifest','./icon-192.png'];
+const C='v3',A=['./','./index.html','./style.css','./app.js','./calendar.js','./config.js','./manifest.webmanifest','./icon-192.png'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(A)));});
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>clients.claim())));
 // Solo archivos propios (nunca Supabase ni mapas): red primero, copia guardada si no hay conexión.

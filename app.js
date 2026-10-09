@@ -19,7 +19,9 @@ async function start(){
     map=L.map('map',{zoomControl:false}).setView([40.4,-3.7],6);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
     markers.addTo(map);
+    map.attributionControl.setPosition('bottomleft');
   }
+  calInit();calLoad();
   await load();
   if(places.length)map.fitBounds(markers.getBounds().pad(.3),{maxZoom:15});
 }
@@ -27,7 +29,7 @@ async function start(){
 async function load(){
   const {data,error}=await sb.from('places').select('*').order('created_at',{ascending:false});
   if(error)return alert(error.message);
-  places=data;markers.clearLayers();
+  places=data;markers.clearLayers();calRender();
   places.forEach(p=>L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:`<div class="pin">${p.rating}</div>`,iconSize:[34,34],iconAnchor:[17,17]})}).on('click',()=>view(p)).addTo(markers));
 }
 

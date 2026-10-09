@@ -8,6 +8,8 @@
    5. App: mapa, cabecera, botones flotantes, modo "elegir sitio"
    6. Panel inferior (formulario y detalle)
    7. Marcadores y ajustes del mapa
+   8. Navegación inferior y animaciones
+   9. Calendario
    ========================================================================== */
 
 
@@ -27,7 +29,9 @@
   --z-panel: 1100;   /* panel inferior y barra de confirmación */
 
   /* Forma */
-  --radius: 12px;
+  --radius: 16px;
+  --glass: rgba(255, 255, 255, .72);
+  --shadow: 0 8px 28px rgba(232, 114, 143, .18);
 }
 
 
@@ -97,12 +101,14 @@ input[type=range] {
   background: var(--grad);
   color: #fff;
   font-weight: 600;
+  box-shadow: 0 6px 16px rgba(232, 114, 143, .28);
 }
 
 .ghost {                      /* variante discreta; va después de .btn a propósito */
   background: none;
   color: var(--mute);
   border: 1px solid var(--line);
+  box-shadow: none;
 }
 
 /* Utilidades */
@@ -149,21 +155,25 @@ input[type=range] {
 /* Cabecera translúcida (respeta el notch del iPhone) */
 header {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: var(--z-ui);
+  top: calc(10px + env(safe-area-inset-top));
+  left: 14px;
+  right: 14px;
+  z-index: 1000;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
-  background: #fff7f2cc;      /* --bg con transparencia */
-  backdrop-filter: blur(8px);
+  padding: 8px 8px 8px 18px;
+  border-radius: 999px;
+  background: var(--glass);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font-weight: 600;
 }
 
 header button {
   padding: 6px 12px;
-  border-radius: 10px;
+  border-radius: 999px;
 }
 
 /* Botones flotantes */
@@ -182,11 +192,11 @@ header button {
 }
 
 #fab {                        /* añadir sitio */
-  bottom: calc(20px + env(safe-area-inset-bottom));
+  bottom: calc(92px + env(safe-area-inset-bottom));
 }
 
 #loc {                        /* mi ubicación */
-  bottom: calc(88px + env(safe-area-inset-bottom));
+  bottom: calc(160px + env(safe-area-inset-bottom));
   width: 44px;
   height: 44px;
   margin-right: 6px;
@@ -238,6 +248,7 @@ header button {
   border-radius: 22px 22px 0 0;
   background: var(--bg);
   box-shadow: 0 -8px 30px #0002;
+  animation: rise .28s ease;
 }
 
 .sheet img {                  /* foto del sitio */
@@ -281,4 +292,163 @@ header button {
 
 .leaflet-tile-pane {          /* suaviza los colores del mapa para que combinen */
   filter: saturate(.6) sepia(.15);
+}
+
+
+/* 8. Navegación inferior y animaciones ------------------------------------- */
+#tabs {
+  position: fixed;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  z-index: 1000;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--glass);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transform: translateX(-50%);
+}
+
+#tabs button {
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--mute);
+  font-weight: 600;
+  transition: background .2s, color .2s;
+}
+
+#tabs button.on {
+  background: var(--grad);
+  color: #fff;
+}
+
+.leaflet-bottom.leaflet-left {          /* atribución de OSM, por encima de la barra */
+  margin-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.sheet::before {                         /* tirador del panel */
+  content: '';
+  display: block;
+  width: 38px;
+  height: 4px;
+  margin: -6px auto 12px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+
+/* 9. Calendario ------------------------------------------------------------ */
+#cal {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: none;
+  overflow: auto;
+  padding: calc(78px + env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom));
+  background: var(--bg);
+}
+
+#app.cal #cal { display: block; }
+#app.cal .fab { display: none; }
+
+.mhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+#mtitle {
+  font-size: 22px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.mhead .mute { margin: 0; font-size: 13px; }
+
+.nav {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--pk);
+  font-size: 22px;
+  box-shadow: var(--shadow);
+}
+
+.wd,
+#grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.wd {
+  margin-bottom: 6px;
+  color: var(--mute);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.d {
+  position: relative;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  font-size: 15px;
+  touch-action: manipulation;            /* evita el zoom del doble toque */
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.d.t { box-shadow: inset 0 0 0 1.5px var(--or); }                       /* hoy */
+.d.s { background: #fff; box-shadow: 0 4px 14px rgba(232, 114, 143, .2); } /* seleccionado */
+.d.t.s { box-shadow: inset 0 0 0 1.5px var(--or), 0 4px 14px rgba(232, 114, 143, .2); }
+
+.d.m::after {                            /* corazón bajo el número */
+  content: '♥';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 5px;
+  color: var(--pk);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.card {
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.item .r2 { color: var(--pk); font-weight: 600; }
+
+.hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  text-align: center;
 }
