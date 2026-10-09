@@ -10,6 +10,7 @@
    7. Marcadores y ajustes del mapa
    8. Navegación inferior y animaciones
    9. Calendario
+   10. Transiciones y contadores del calendario
    ========================================================================== */
 
 
@@ -313,7 +314,10 @@ header button {
 }
 
 #tabs button {
-  padding: 10px 20px;
+  position: relative;
+  z-index: 1;
+  width: 108px;
+  padding: 10px 0;
   border: 0;
   border-radius: 999px;
   background: none;
@@ -323,7 +327,6 @@ header button {
 }
 
 #tabs button.on {
-  background: var(--grad);
   color: #fff;
 }
 
@@ -352,14 +355,18 @@ header button {
   position: fixed;
   inset: 0;
   z-index: 950;
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(14px);
+  transition: opacity .3s ease, transform .3s ease, visibility 0s .3s;
   overflow: auto;
   padding: calc(78px + env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom));
   background: var(--bg);
 }
 
-#app.cal #cal { display: block; }
-#app.cal .fab { display: none; }
+#app.cal #cal { opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition-delay: 0s; }
+#app.cal .fab { opacity: 0; pointer-events: none; transform: scale(.8); }
 
 .mhead {
   display: flex;
@@ -419,16 +426,19 @@ header button {
 .d.s { background: #fff; box-shadow: 0 4px 14px rgba(232, 114, 143, .2); } /* seleccionado */
 .d.t.s { box-shadow: inset 0 0 0 1.5px var(--or), 0 4px 14px rgba(232, 114, 143, .2); }
 
-.d.m::after {                            /* corazón bajo el número */
-  content: '♥';
+.d .h {                                 /* corazones bajo el número */
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 5px;
-  color: var(--pk);
-  font-size: 11px;
+  bottom: 4px;
+  font-size: 10px;
+  font-style: normal;
   line-height: 1;
+  letter-spacing: -1px;
 }
+
+.h .n { color: var(--pk); }
+.h .j { color: var(--or); }                /* JOB en naranja */
 
 .card {
   margin-top: 18px;
@@ -452,3 +462,79 @@ header button {
   font-size: 13px;
   text-align: center;
 }
+
+
+/* 10. Transiciones y contadores del calendario ------------------------------ */
+.fab { transition: opacity .25s ease, transform .25s ease; }
+
+#tabs::before {                          /* píldora que se desliza entre pestañas */
+  content: '';
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: 108px;
+  border-radius: 999px;
+  background: var(--grad);
+  transition: transform .3s cubic-bezier(.4, 0, .2, 1);
+}
+
+#app.cal #tabs::before { transform: translateX(112px); }   /* 108px + 4px de separación */
+
+.ctr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-weight: 600;
+}
+
+.job { color: var(--or); }
+
+.step { display: flex; align-items: center; gap: 12px; }
+.step b { min-width: 1.5ch; text-align: center; }
+
+.step button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--pk);
+  font-size: 20px;
+}
+
+.step button:disabled { opacity: .35; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* 11. Selector Relación / JOB y botón deshabilitado ------------------------- */
+.seg {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.seg label { flex: 1; }
+.seg input { display: none; }
+
+.seg span {
+  display: block;
+  padding: 9px;
+  border-radius: 999px;
+  color: var(--mute);
+  font-weight: 600;
+  text-align: center;
+  transition: background .2s, color .2s;
+}
+
+.seg input:checked + span { background: var(--grad); color: #fff; }
+
+.btn:disabled { opacity: .6; }
