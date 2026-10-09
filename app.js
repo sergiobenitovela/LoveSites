@@ -81,7 +81,7 @@ function form(c){
   <div id="fl" class="mute" style="text-align:center"></div>
   <div>Nota: <b id="rv">7</b>/10</div><input id="fr" type="range" min="1" max="10" value="7">
   <textarea id="fc" rows="3" placeholder="Nota o recuerdo (opcional)"></textarea>
-  <input id="fd" type="date" value="${new Date().toISOString().slice(0,10)}">
+  <input id="fd" type="date" value="${new Date().ymd(new Date()).slice(0,10)}">
   <div class="row"><button class="btn ghost" id="x">Cancelar</button><button class="btn" id="ok">Guardar</button></div>`);
   ['#fcam','#fgal'].forEach(q=>$(q).onchange=e=>{chosen=e.target.files[0]||chosen;$('#fl').textContent=chosen?'✓ Foto lista':'';});
   $('#fr').oninput=e=>$('#rv').textContent=e.target.value;
