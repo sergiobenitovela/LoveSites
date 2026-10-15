@@ -12,6 +12,7 @@ function calInit() {
   $('#prev').onclick = () => shift(-1);
   $('#next').onclick = () => shift(1);
   $('#today').onclick = () => { const t = new Date(); calMonth = new Date(t.getFullYear(), t.getMonth(), 1); calSel = ymd(t); calRender(); };
+  $('#reset').onclick = () => { if (confirm('¿Restaurar los globos a ' + MAX_STOCK + '?')) adjustStock(MAX_STOCK); };
   $('#np').onclick = () => addHeart(calSel, 'normal');
   $('#nm').onclick = () => removeHeart(calSel, 'normal');
   $('#jp').onclick = () => addHeart(calSel, 'job');
@@ -29,8 +30,6 @@ function calInit() {
     if (it) view(places.find(p => p.id === it.dataset.p));
   };
   calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
-  $('#bell').onclick = pushEnable;
-  pushInit();
 }
 
 function showTab(t) {
@@ -58,6 +57,7 @@ async function calLoad() {
 
 /* Añade una relación ('normal' resta un globo, 'job' no) */
 async function addHeart(d, kind) {
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); // pide permiso con el toque
   const { error } = await sb.from('days').insert({ day: d, kind });
   if (error) return alert('Error: ' + error.message);
   const e = calDays.get(d) || { n: 0, j: 0 };
@@ -86,7 +86,9 @@ async function removeHeart(d, kind) {
 async function adjustStock(delta) {
   const { data, error } = await sb.rpc('adjust_stock', { delta });
   if (error) return alert('Globos: ' + error.message);
-  if (delta < 0 && (data === 0 || data === 5)) sendPush(data === 0 ? 'empty' : 'low');
+  if (data == null) return alert('No se pudo actualizar el contador de globos: la tabla stock no devolvió datos. Revisa su política (RLS) en Supabase.');
+  if (delta < 0 && data === 5) notify('Hay que comprar globos');  
+  if (delta < 0 && data === 0 ) notify('Se acabaron los globos');   // un solo aviso, a 5 y al llegar a 0
   stock = data === 0 ? MAX_STOCK : data;            // al llegar a 0 se reinicia a 24
   calRender();
 }
@@ -103,21 +105,21 @@ async function notify(msg) {
 
 function calRender() {
   const y = calMonth.getFullYear(), m = calMonth.getMonth(), today = ymd(new Date());
-  const pc = { n: {}, j: {} };                      // cada sitio con fecha cuenta como relación o JOB
-  places.forEach(p => { if (!p.visited_on) return; const o = pc[p.kind === 'job' ? 'j' : 'n']; o[p.visited_on] = (o[p.visited_on] || 0) + 1; });
-  const cnt = k => { const e = calDays.get(k) || { n: 0, j: 0 }; return { n: e.n + (pc.n[k] || 0), j: e.j + (pc.j[k] || 0), man: e.n, manj: e.j }; };
+  const pc = {};                                    // cada sitio con fecha cuenta como una relación
+  places.forEach(p => { if (p.visited_on) pc[p.visited_on] = (pc[p.visited_on] || 0) + 1; });
+  const cnt = k => { const e = calDays.get(k) || { n: 0, j: 0 }; return { n: e.n + (pc[k] || 0), j: e.j, man: e.n }; };
   const lead = (new Date(y, m, 1).getDay() + 6) % 7, total = new Date(y, m + 1, 0).getDate();
-  let h = '<i></i>'.repeat(lead), count = 0;
+  let h = '<i></i>'.repeat(lead), rel = 0, job = 0;
   for (let d = 1; d <= total; d++) {
     const k = ymd(new Date(y, m, d)), c = cnt(k), all = c.n + c.j;
-    if (all) count++;
+    rel += c.n; job += c.j;                         // recuento del mes
     const hearts = all > 3 ? `<span class="n">♥${all}</span>`
       : '<span class="n">♥</span>'.repeat(c.n) + '<span class="j">♥</span>'.repeat(c.j);
     h += `<button data-d="${k}" class="d${k === today ? ' t' : ''}${k === calSel ? ' s' : ''}"><span>${d}</span><small class="h">${hearts}</small></button>`;
   }
   $('#grid').innerHTML = h;
   $('#mtitle').textContent = `${MESES[m]} ${y}`;
-  $('#mcount').textContent = `${count} ${count === 1 ? 'día' : 'días'} · 🎈 ${stock}/${MAX_STOCK}`;
+  $('#mcount').textContent = `${rel} ${rel === 1 ? 'relación' : 'relaciones'}${job ? ` + ${job} JOB` : ''} · 🎈 ${stock}/${MAX_STOCK}`;
 
   const c = cnt(calSel), ps = places.filter(p => p.visited_on === calSel);
   const title = new Date(calSel + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -126,44 +128,5 @@ function calRender() {
     : '<p class="mute">Ningún sitio este día</p>');
   $('#nv').textContent = c.n; $('#jv').textContent = c.j;
   $('#nm').disabled = c.man === 0;                  // el − solo quita marcas manuales; los sitios se borran desde el mapa
-  $('#jm').disabled = c.manj === 0;
-}
-
-/* ===== Notificaciones push reales ===== */
-let pushOn = false;                                  // ¿este móvil está suscrito?
-const b64 = s => {                                   // clave VAPID (base64url) -> bytes
-  const r = atob((s + '='.repeat((4 - s.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
-  return Uint8Array.from(r, c => c.charCodeAt(0));
-};
-const pushLabel = () => { const b = $('#bell'); b.textContent = pushOn ? '🔔 Avisos activados' : '🔔 Activar avisos'; b.disabled = pushOn; };
-
-async function pushSave(sub) {                       // guarda la suscripción de este móvil en Supabase
-  const k = sub.toJSON().keys;
-  const { error } = await sb.from('push_subscriptions').upsert({ endpoint: sub.endpoint, p256dh: k.p256dh, auth: k.auth }, { onConflict: 'endpoint' });
-  if (error) throw error;
-}
-
-async function pushEnable() {                        // botón "Activar avisos" (el permiso exige un toque del usuario)
-  try {
-    if (!('PushManager' in window)) return alert('Este navegador no admite push. En iPhone, añade antes la app a la pantalla de inicio.');
-    if (await Notification.requestPermission() !== 'granted') return alert('Permiso denegado. Actívalo en los ajustes del móvil.');
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(VAPID_PUBLIC_KEY) });
-    await pushSave(sub); pushOn = true; pushLabel();
-  } catch (e) { alert('Avisos: ' + e.message); }
-}
-
-async function pushInit() {                          // al abrir: si ya había permiso, refresca la suscripción
-  if ('PushManager' in window && Notification.permission === 'granted') {
-    try {
-      const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
-      if (sub) { await pushSave(sub); pushOn = true; }
-    } catch (e) {}
-  }
-  pushLabel();
-}
-
-async function sendPush(type) {                      // pide a la Edge Function que avise a los dos móviles
-  const { error } = await sb.functions.invoke('notify', { body: { type } });
-  if (error || !pushOn) notify(type === 'empty' ? 'Se acabaron los globos' : 'Comprar globos'); // respaldo local
+  $('#jm').disabled = c.j === 0;
 }
