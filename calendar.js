@@ -1,10 +1,10 @@
-/* Calendario: varias relaciones por día, tipo JOB y contador de globos.
+/* Calendario: varias relaciones por día, tipo Job y contador de globos.
    Se carga ANTES que app.js; solo define funciones, que app.js llama cuando todo está listo. */
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 let stockMax = 24;           // límite de globos (se guarda en la base de datos)
 let calMonth = new Date(), calSel = ymd(new Date()), lastTap = { d: '', t: 0 };
-let calDays = new Map();   // 'AAAA-MM-DD' -> { n: relaciones, j: JOB }
+let calDays = new Map();   // 'AAAA-MM-DD' -> { n: relaciones, j: Job }
 let stock = 24;             // globos que quedan
 
 function calInit() {
@@ -128,7 +128,7 @@ async function notify(msg) {
 
 function calRender() {
   const y = calMonth.getFullYear(), m = calMonth.getMonth(), today = ymd(new Date());
-  const pc = { n: {}, j: {} };                      // cada sitio con fecha cuenta como relación o JOB
+  const pc = { n: {}, j: {} };                      // cada sitio con fecha cuenta como relación o Job
   places.forEach(p => { if (!p.visited_on) return; const o = pc[p.kind === 'job' ? 'j' : 'n']; o[p.visited_on] = (o[p.visited_on] || 0) + 1; });
   const cnt = k => { const e = calDays.get(k) || { n: 0, j: 0 }; return { n: e.n + (pc.n[k] || 0), j: e.j + (pc.j[k] || 0), man: e.n, manj: e.j }; };
   const lead = (new Date(y, m, 1).getDay() + 6) % 7, total = new Date(y, m + 1, 0).getDate();
@@ -142,8 +142,7 @@ function calRender() {
   }
   $('#grid').innerHTML = h;
   $('#mtitle').textContent = `${MESES[m]} ${y}`;
-  $('#mcount').textContent = `${rel} ${rel === 1 ? 'relación' : 'relaciones'}${job ? ` + ${job} JOB` : ''} · 🎈 ${stock}/${stockMax}`;
-
+  $('#mcount').textContent = `${rel} ${rel === 1 ? 'relación' : 'relaciones'}${job ? ` + ${job} ${job === 1 ? 'job' : 'jobs'}` : ''} · 🎈 ${stock}/${stockMax}`;
   const c = cnt(calSel), ps = places.filter(p => p.visited_on === calSel);
   const title = new Date(calSel + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   $('#dayinfo').innerHTML = `<b>${title}</b>` + (ps.length
@@ -151,5 +150,5 @@ function calRender() {
     : '<p class="mute">Ningún sitio este día</p>');
   $('#nv').textContent = c.n; $('#jv').textContent = c.j;
   $('#nm').disabled = c.man === 0;                  // el − solo quita marcas manuales; los sitios se borran desde el mapa
-  $('#jm').disabled = c.manj === 0;                  // los sitios JOB se borran desde el mapa
+  $('#jm').disabled = c.manj === 0;                  // los sitios Job se borran desde el mapa
 }

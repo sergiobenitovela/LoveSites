@@ -100,7 +100,7 @@ function form(c){
       const kind=document.querySelector('input[name=fk]:checked').value;
       const {error}=await sb.from('places').insert({kind,name,lat:c.lat,lng:c.lng,rating:+$('#fr').value,note:$('#fc').value.trim()||null,visited_on:$('#fd').value||null,photo_path:path});
       if(error)throw error;
-      if(kind==='normal')adjustStock(-1);    // un sitio JOB no gasta globo
+      if(kind==='normal')adjustStock(-1);    // un sitio Job no gasta globo
       closeSheet();load();
     }catch(e){alert('Error: '+e.message);ok.disabled=false;ok.textContent='Guardar';}
   };
@@ -113,13 +113,13 @@ async function view(p){
     if(data)img=`<img src="${data.signedUrl}" alt="">`;
   }
   sheet(`${img}<h2>${esc(p.name)} <span class="r">${p.rating}/10</span></h2>
-  <p class="mute">${esc(p.visited_on||'')}${p.kind==='job'?' · JOB':''}</p><p>${esc(p.note||'')}</p>
+  <p class="mute">${esc(p.visited_on||'')}${p.kind==='job'?' · Job':''}</p><p>${esc(p.note||'')}</p>
   <div class="row"><button class="btn ghost" id="del">Borrar</button><button class="btn" id="x">Cerrar</button></div>`);
   $('#del').onclick=async()=>{
     if(!confirm('¿Borrar este sitio?'))return;
     if(p.photo_path)await sb.storage.from('fotos').remove([p.photo_path]);
     await sb.from('places').delete().eq('id',p.id);
-    if(p.kind!=='job')adjustStock(1);        // al borrarlo se devuelve el globo (si no era JOB)
+    if(p.kind!=='job')adjustStock(1);        // al borrarlo se devuelve el globo (si no era Job)
     closeSheet();load();
   };
 }
