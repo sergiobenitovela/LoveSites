@@ -42,7 +42,7 @@ const closeSheet=()=>$('#sheet').classList.add('hide');
 let locWatch,locTimer,locDot,locCirc;
 $('#loc').onclick=()=>{
   if(!navigator.geolocation)return alert('Tu navegador no permite la geolocalización');
-  const btn=$('#loc');btn.textContent='…';
+  const btn=$('#loc');btn.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';   // puntos animados mientras busca
   navigator.geolocation.clearWatch(locWatch);clearTimeout(locTimer);
   const stop=()=>{navigator.geolocation.clearWatch(locWatch);clearTimeout(locTimer);btn.textContent='⌖';};
   let first=true;
@@ -82,6 +82,7 @@ function form(c){
   <div>Nota: <b id="rv">7</b>/10</div><input id="fr" type="range" min="1" max="10" value="7">
   <textarea id="fc" rows="3" placeholder="Nota o recuerdo (opcional)"></textarea>
   <input id="fd" type="date" value="${ymd(new Date())}">
+  <div class="seg"><label><input type="radio" name="fk" value="normal" checked><span>♥ Relación</span></label><label><input type="radio" name="fk" value="job"><span>♥ JOB</span></label></div>
   <div class="row"><button class="btn ghost" id="x">Cancelar</button><button class="btn" id="ok">Guardar</button></div>`);
   ['#fcam','#fgal'].forEach(q=>$(q).onchange=e=>{chosen=e.target.files[0]||chosen;$('#fl').textContent=chosen?'✓ Foto lista':'';});
   $('#fr').oninput=e=>$('#rv').textContent=e.target.value;
@@ -96,9 +97,10 @@ function form(c){
         const {error}=await sb.storage.from('fotos').upload(path,await shrink(f),{contentType:'image/jpeg'});
         if(error)throw error;
       }
-      const {error}=await sb.from('places').insert({name,lat:c.lat,lng:c.lng,rating:+$('#fr').value,note:$('#fc').value.trim()||null,visited_on:$('#fd').value||null,photo_path:path});
+      const kind=document.querySelector('input[name=fk]:checked').value;
+      const {error}=await sb.from('places').insert({kind,name,lat:c.lat,lng:c.lng,rating:+$('#fr').value,note:$('#fc').value.trim()||null,visited_on:$('#fd').value||null,photo_path:path});
       if(error)throw error;
-      adjustStock(-1);                       // un sitio nuevo cuenta como una relación
+      if(kind==='normal')adjustStock(-1);    // un sitio JOB no gasta globo
       closeSheet();load();
     }catch(e){alert('Error: '+e.message);ok.disabled=false;ok.textContent='Guardar';}
   };
@@ -111,13 +113,13 @@ async function view(p){
     if(data)img=`<img src="${data.signedUrl}" alt="">`;
   }
   sheet(`${img}<h2>${esc(p.name)} <span class="r">${p.rating}/10</span></h2>
-  <p class="mute">${esc(p.visited_on||'')}</p><p>${esc(p.note||'')}</p>
+  <p class="mute">${esc(p.visited_on||'')}${p.kind==='job'?' · JOB':''}</p><p>${esc(p.note||'')}</p>
   <div class="row"><button class="btn ghost" id="del">Borrar</button><button class="btn" id="x">Cerrar</button></div>`);
   $('#del').onclick=async()=>{
     if(!confirm('¿Borrar este sitio?'))return;
     if(p.photo_path)await sb.storage.from('fotos').remove([p.photo_path]);
     await sb.from('places').delete().eq('id',p.id);
-    adjustStock(1);                          // al borrarlo se devuelve el globo
+    if(p.kind!=='job')adjustStock(1);        // al borrarlo se devuelve el globo (si no era JOB)
     closeSheet();load();
   };
 }

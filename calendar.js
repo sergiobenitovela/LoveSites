@@ -2,17 +2,35 @@
    Se carga ANTES que app.js; solo define funciones, que app.js llama cuando todo está listo. */
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const MAX_STOCK = 24;
+let stockMax = 24;           // límite de globos (se guarda en la base de datos)
 let calMonth = new Date(), calSel = ymd(new Date()), lastTap = { d: '', t: 0 };
 let calDays = new Map();   // 'AAAA-MM-DD' -> { n: relaciones, j: JOB }
-let stock = MAX_STOCK;     // globos que quedan
+let stock = 24;             // globos que quedan
 
 function calInit() {
-  const shift = n => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + n, 1); calRender(); };
+  const goMonth = (target, sel) => {                // cambia de mes con animación de deslizamiento
+    const dir = Math.sign(target - calMonth);
+    calMonth = target; if (sel) calSel = sel;
+    calRender();
+    if (dir && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const kf = [{ transform: `translateX(${dir * 36}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }];
+      const opt = { duration: 280, easing: 'cubic-bezier(.4, 0, .2, 1)' };
+      $('#grid').animate(kf, opt); $('#mtitle').animate(kf, opt);
+    }
+  };
+  const shift = n => goMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + n, 1));
   $('#prev').onclick = () => shift(-1);
   $('#next').onclick = () => shift(1);
-  $('#today').onclick = () => { const t = new Date(); calMonth = new Date(t.getFullYear(), t.getMonth(), 1); calSel = ymd(t); calRender(); };
-  $('#reset').onclick = () => { if (confirm('¿Restaurar los globos a ' + MAX_STOCK + '?')) adjustStock(MAX_STOCK); };
+  $('#today').onclick = () => { const t = new Date(); goMonth(new Date(t.getFullYear(), t.getMonth(), 1), ymd(t)); };
+  $('#reset').onclick = async () => {               // restaurar: pregunta el límite y deja el contador lleno
+    const v = prompt('¿Cuántos globos tienes ahora de límite?', stockMax);
+    if (v === null) return;
+    const n = parseInt(v, 10);
+    if (!(n >= 1 && n <= 999)) return alert('Escribe un número entero entre 1 y 999.');
+    const { data, error } = await sb.rpc('reset_stock', { new_max: n });
+    if (error || data == null) return alert('No se pudo restaurar los globos: ' + (error ? error.message : 'sin respuesta'));
+    stockMax = n; stock = data; calRender();
+  };
   $('#np').onclick = () => addHeart(calSel, 'normal');
   $('#nm').onclick = () => removeHeart(calSel, 'normal');
   $('#jp').onclick = () => addHeart(calSel, 'job');
@@ -29,6 +47,12 @@ function calInit() {
     const it = e.target.closest('[data-p]');
     if (it) view(places.find(p => p.id === it.dataset.p));
   };
+  let sx = 0, sy = 0;                               // deslizar en horizontal cambia de mes
+  $('#cal').addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  $('#cal').addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) shift(dx < 0 ? 1 : -1);
+  }, { passive: true });
   calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
 }
 
@@ -42,7 +66,7 @@ function showTab(t) {
 async function calLoad() {
   const [d, s] = await Promise.all([
     sb.from('days').select('day,kind'),
-    sb.from('stock').select('remaining').eq('id', 1).single(),
+    sb.from('stock').select('remaining,capacity').eq('id', 1).single(),
   ]);
   if (d.error) return alert('Calendario: ' + d.error.message);
   calDays = new Map();
@@ -51,7 +75,7 @@ async function calLoad() {
     r.kind === 'job' ? e.j++ : e.n++;
     calDays.set(r.day, e);
   });
-  if (s.data) stock = s.data.remaining;
+  if (s.data) { stock = s.data.remaining; stockMax = s.data.capacity; }
   calRender();
 }
 
@@ -87,9 +111,8 @@ async function adjustStock(delta) {
   const { data, error } = await sb.rpc('adjust_stock', { delta });
   if (error) return alert('Globos: ' + error.message);
   if (data == null) return alert('No se pudo actualizar el contador de globos: la tabla stock no devolvió datos. Revisa su política (RLS) en Supabase.');
-  if (delta < 0 && data === 5) notify('Hay que comprar globos');  
-  if (delta < 0 && data === 0 ) notify('Se acabaron los globos');   // un solo aviso, a 5 y al llegar a 0
-  stock = data === 0 ? MAX_STOCK : data;            // al llegar a 0 se reinicia a 24
+  if (delta < 0 && (data === 0 || data === 5)) notify('Hay que comprar globos');   // un solo aviso, a 5 y al llegar a 0
+  stock = data === 0 ? stockMax : data;             // al llegar a 0 se reinicia al límite
   calRender();
 }
 
@@ -105,9 +128,9 @@ async function notify(msg) {
 
 function calRender() {
   const y = calMonth.getFullYear(), m = calMonth.getMonth(), today = ymd(new Date());
-  const pc = {};                                    // cada sitio con fecha cuenta como una relación
-  places.forEach(p => { if (p.visited_on) pc[p.visited_on] = (pc[p.visited_on] || 0) + 1; });
-  const cnt = k => { const e = calDays.get(k) || { n: 0, j: 0 }; return { n: e.n + (pc[k] || 0), j: e.j, man: e.n }; };
+  const pc = { n: {}, j: {} };                      // cada sitio con fecha cuenta como relación o JOB
+  places.forEach(p => { if (!p.visited_on) return; const o = pc[p.kind === 'job' ? 'j' : 'n']; o[p.visited_on] = (o[p.visited_on] || 0) + 1; });
+  const cnt = k => { const e = calDays.get(k) || { n: 0, j: 0 }; return { n: e.n + (pc.n[k] || 0), j: e.j + (pc.j[k] || 0), man: e.n, manj: e.j }; };
   const lead = (new Date(y, m, 1).getDay() + 6) % 7, total = new Date(y, m + 1, 0).getDate();
   let h = '<i></i>'.repeat(lead), rel = 0, job = 0;
   for (let d = 1; d <= total; d++) {
@@ -119,7 +142,7 @@ function calRender() {
   }
   $('#grid').innerHTML = h;
   $('#mtitle').textContent = `${MESES[m]} ${y}`;
-  $('#mcount').textContent = `${rel} ${rel === 1 ? 'relación' : 'relaciones'}${job ? ` + ${job} JOB` : ''} · 🎈 ${stock}/${MAX_STOCK}`;
+  $('#mcount').textContent = `${rel} ${rel === 1 ? 'relación' : 'relaciones'}${job ? ` + ${job} JOB` : ''} · 🎈 ${stock}/${stockMax}`;
 
   const c = cnt(calSel), ps = places.filter(p => p.visited_on === calSel);
   const title = new Date(calSel + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -128,5 +151,5 @@ function calRender() {
     : '<p class="mute">Ningún sitio este día</p>');
   $('#nv').textContent = c.n; $('#jv').textContent = c.j;
   $('#nm').disabled = c.man === 0;                  // el − solo quita marcas manuales; los sitios se borran desde el mapa
-  $('#jm').disabled = c.j === 0;
+  $('#jm').disabled = c.manj === 0;                  // los sitios JOB se borran desde el mapa
 }
