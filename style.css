@@ -438,7 +438,7 @@ header button {
 }
 
 .h .n { color: var(--pk); }
-.h .j { color: var(--or); }                /* JOB en naranja */
+.h .j { color: var(--or); }                /* Job en naranja */
 
 .card {
   margin-top: 18px;
@@ -490,7 +490,8 @@ header button {
   font-weight: 600;
 }
 
-.job { color: var(--or); }
+.jobs { color: var(--or); }
+.relaciones { color: var(--pk); }
 
 .step { display: flex; align-items: center; gap: 12px; }
 .step b { min-width: 1.5ch; text-align: center; }
@@ -511,7 +512,7 @@ header button {
   * { transition: none !important; animation: none !important; }
 }
 
-/* 11. Selector Relación / JOB y puntos de carga ------------------------------ */
+/* 11. Selector Relación / Job y puntos de carga ------------------------------ */
 .seg {
   display: flex;
   gap: 4px;
